@@ -1,0 +1,38 @@
+# Entornos y archivos de Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Datos privados o pesados
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+!data/README.md
+
+# Objetos, modelos y resultados pesados
+models/*
+!models/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# Archivos temporales y del sistema
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
+# Archivos generados por LaTeX
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.out
+report/*.synctex.gz
+report/*.toc
+report/*.lof
+report/*.lot

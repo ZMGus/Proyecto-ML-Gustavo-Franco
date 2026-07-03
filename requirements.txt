@@ -19,6 +19,3 @@ scipy>=1.10,<2.0
 matplotlib>=3.7,<4.0
 jupyter>=1.0,<2.0
 ipykernel>=6.0,<7.0
-
-# Descarga desde Google Drive
-gdown>=5.0,<6.0

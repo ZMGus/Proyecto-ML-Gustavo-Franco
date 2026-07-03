@@ -6,13 +6,14 @@
 
 ## Descripción del proyecto
 
-Este repositorio contiene el código, configuraciones y documentación del proyecto de análisis de comentarios abiertos (verbatims) mediante técnicas de procesamiento de lenguaje natural (NLP) y modelos clásicos de aprendizaje automático.
+Este repositorio contiene el código, las configuraciones y la documentación del proyecto de análisis de comentarios abiertos (*verbatims*) mediante técnicas de procesamiento de lenguaje natural (NLP) y modelos clásicos de aprendizaje automático.
 
 El proyecto se organiza en dos líneas de trabajo desarrolladas de forma independiente y comparables metodológicamente:
 
 - **Línea A: comentarios del sector seguros.** Se transforma la base desde formato ancho a formato largo, se limpian y normalizan los textos, se generan cinco variantes de preprocesamiento y se comparan representaciones TF-IDF con n-gramas y Word2Vec mediante modelos KNN multietiqueta.
-- **Línea B: comentarios del ámbito hospitalario.** Se aplica una lógica equivalente de limpieza, preparación, representación y modelamiento sobre un segundo conjunto de datos. La documentación y notebooks específicos de esta línea deben incorporarse en la carpeta `notebooks/`.
+- **Línea B: comentarios del ámbito hospitalario.** Se aplica una lógica equivalente de limpieza, preparación, representación y modelamiento sobre un segundo conjunto de datos. 
 
+La documentación y notebooks específicos ademas de archivos .csv de ambas líneas estaran incorporados en la carpeta `notebooks/`.
 La comparación considera el efecto de la representación textual, el preprocesamiento y los hiperparámetros sobre métricas de clasificación y tiempos de ejecución.
 
 ## Objetivos
@@ -30,21 +31,12 @@ La comparación considera el efecto de la representación textual, el preprocesa
 .
 ├── README.md
 ├── requirements.txt
-├── .gitignore
-├── config/
-│   ├── dataset_links.example.json
-│   └── dataset_links.json              # Local; no se versiona.
-├── data/
-│   ├── README.md
-│   ├── raw/                            # Datos descargados desde Google Drive; no se versionan.
-│   └── processed/                      # Datos derivados; no se versionan si son pesados.
+├── .gitignore                    
 ├── notebooks/
-│   ├── Proyecto_ML_Universidad_feature_extraction_corregido.ipynb
-│   └── [notebooks de la Línea B]
-├── scripts/
-│   └── download_data.py
-├── models/                             # Modelos, vectores y objetos serializados; no se versionan si son pesados.
-├── outputs/                            # Métricas, tablas y figuras reproducibles.
+│   ├── LineaA_KNN.ipynb
+│   └── [notebooks y archivos de la Línea B]
+│   └── Base Etiquetada para tfidf
+│   └── Base Etiquetada para Word2Vec                                                     
 └── report/                             # Informe LaTeX, bibliografía, figuras y PDF final.
 ```
 
@@ -53,7 +45,7 @@ La comparación considera el efecto de la representación textual, el preprocesa
 - Python 3.10 o superior.
 - `pip` para instalación de dependencias.
 - Jupyter Notebook o Visual Studio Code con extensión de Jupyter.
-- Acceso autorizado a los enlaces de Google Drive que contienen los datasets.
+- Acceso autorizado a los enlaces de Google Drive compartidos por el equipo.
 
 Las dependencias principales se encuentran en [`requirements.txt`](requirements.txt).
 
@@ -62,8 +54,8 @@ Las dependencias principales se encuentran en [`requirements.txt`](requirements.
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <NOMBRE_DEL_REPOSITORIO>
+git clone https://github.com/ZMGus/Proyecto-ML-Gustavo-Franco.git
+cd Proyecto-ML-Gustavo-Franco
 ```
 
 ### 2. Crear y activar un entorno virtual
@@ -112,61 +104,37 @@ nltk.download("stopwords")
 nltk.download("punkt")
 ```
 
-## Obtención de los datasets
+## Obtención manual de los datasets
 
-Los datasets no se incluyen en el repositorio porque contienen información privada y/o archivos de gran tamaño. Los archivos se distribuyen mediante enlaces de Google Drive con permisos para el equipo docente y los integrantes del proyecto.
+Los datasets no se incluyen en el repositorio porque contienen información privada y/o archivos de gran tamaño. Los archivos se comparten mediante Google Drive únicamente con los integrantes y el equipo docente autorizado.
 
-### Configuración de enlaces
+### Enlaces de acceso autorizado
 
-1. Copie el archivo de ejemplo:
+- **Dataset Línea A (sector seguros):** `https://docs.google.com/spreadsheets/d/1amznIch7_tSg1yRvxd2QLEjFcwN8Pygd/edit?gid=1317965515#gid=1317965515`
+- **Dataset Línea B (ámbito hospitalario):** `https://docs.google.com/spreadsheets/d/1YkGvjsuF4Que-rcSdqKZCIvCkNPiHBbu/edit?gid=1036962913#gid=1036962913`
 
-```bash
-cp config/dataset_links.example.json config/dataset_links.json
-```
+### Procedimiento de descarga
 
-En Windows PowerShell:
-
-```powershell
-Copy-Item config/dataset_links.example.json config/dataset_links.json
-```
-
-2. Abra `config/dataset_links.json` y reemplace los valores de `url` por los enlaces compartidos de Google Drive.
-
-```json
-{
-  "dataset_linea_a": {
-    "kind": "file",
-    "url": "PEGAR_ENLACE_DE_GOOGLE_DRIVE_AQUI",
-    "output": "data/raw/dataset_linea_a"
-  },
-  "dataset_linea_b": {
-    "kind": "file",
-    "url": "PEGAR_ENLACE_DE_GOOGLE_DRIVE_AQUI",
-    "output": "data/raw/dataset_linea_b"
-  }
-}
-```
-
-> Si cada dataset se comparte como carpeta de Google Drive, cambie `"kind": "file"` por `"kind": "folder"`.
-
-3. Descargue los archivos:
-
-```bash
-python scripts/download_data.py --config config/dataset_links.json
-```
-
-El script descarga los datos en `data/raw/`. Esta carpeta está excluida del control de versiones mediante `.gitignore`.
+1. Inicie sesión con la cuenta a la que se otorgó permiso de acceso.
+2. Abra el enlace de Google Drive correspondiente a la línea de trabajo.
+3. Descargue manualmente el archivo o carpeta compartida.
+4. Guarde los archivos originales en la misma altura que los notebooks
+5. Ejecute el notebook de la línea correspondiente.
 
 ## Ejecución y reproducción de experimentos
 
 ### Línea A: sector seguros
 
-1. Confirme que el archivo correspondiente se encuentre en `data/raw/`.
+1. Descargue manualmente el archivo autorizado desde Google Drive y guárdelo a la misma altura que el notebook de la Linea A
 2. Abra el notebook de la Línea A:
 
 ```bash
-jupyter notebook notebooks/Proyecto_ML_Universidad_feature_extraction_corregido.ipynb
+jupyter notebook notebooks/LineaA_KNN.ipynb
 ```
+
+### Línea B: sector seguros
+
+Agrear Linea B
 
 3. Ejecute las celdas en el orden definido en el notebook:
 
@@ -180,42 +148,8 @@ jupyter notebook notebooks/Proyecto_ML_Universidad_feature_extraction_corregido.
    - búsqueda de hiperparámetros KNN;
    - evaluación de métricas y ajuste de umbrales por categoría.
 
-4. Los resultados deben guardarse en `outputs/` y los objetos entrenados en `models/`, evitando subir archivos grandes al repositorio.
-
 ### Línea B: ámbito hospitalario
 
 ```text
 [Completar con el notebook, archivo de entrada y orden de ejecución desarrollado para la Línea B.]
 ```
-
-## Reproducibilidad
-
-Para garantizar comparabilidad entre configuraciones, los experimentos deben mantener:
-
-- la misma muestra etiquetada dentro de cada línea de trabajo;
-- una división fija de entrenamiento, validación y prueba;
-- una semilla aleatoria común (`SEED = 42`, salvo que el notebook indique otra);
-- las mismas métricas de evaluación para las configuraciones comparadas;
-- registro de representación, versión de texto, hiperparámetros, tiempos y métricas finales.
-
-En la Línea A, los experimentos comparan cinco variantes de texto y dos representaciones, generando diez configuraciones KNN antes de la calibración de umbrales por categoría.
-
-## Resultados principales disponibles
-
-En la Línea A, el análisis previo a la calibración de umbrales identificó como mejor resultado observado a `KNN__TFIDF_NGRAMS__texto_v5_lemma`. Posteriormente, se aplicó una etapa adicional de ajuste de umbrales por categoría, orientada a mejorar el equilibrio entre precision y recall. Los resultados detallados, tablas y reportes de clasificación se encuentran documentados en el informe final de la carpeta `report/`.
-
-```text
-[Incorporar aquí el resumen de resultados de la Línea B cuando se agreguen sus archivos y métricas finales.]
-```
-
-## Privacidad y uso de datos
-
-Los datasets utilizados son de carácter privado. No deben subirse al repositorio, redistribuirse públicamente ni utilizarse fuera del contexto académico autorizado. El repositorio solo contiene código, configuraciones, instrucciones de descarga y documentación necesaria para reproducir el procesamiento por personas que dispongan de autorización para acceder a los enlaces compartidos.
-
-## Informe final
-
-El informe escrito en LaTeX, las figuras, la bibliografía y el PDF final deben almacenarse en la carpeta `report/`. No se deben incluir listados extensos de código dentro del informe; el código fuente se evalúa directamente desde este repositorio.
-
-## Contacto
-
-Para consultas sobre la reproducción del proyecto, contactar a los integrantes mediante los canales definidos para la asignatura.
