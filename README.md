@@ -56,7 +56,6 @@ La comparación considera el efecto de la representación textual, el preprocesa
 - Python 3.10 o superior.
 - `pip` para instalación de dependencias.
 - Jupyter Notebook o Visual Studio Code con extensión de Jupyter.
-- Acceso autorizado a los enlaces de Google Drive compartidos por el equipo.
 
 Las dependencias principales se encuentran en [`requirements.txt`](requirements.txt).
 
