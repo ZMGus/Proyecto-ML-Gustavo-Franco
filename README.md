@@ -45,6 +45,7 @@ La comparación considera el efecto de la representación textual, el preprocesa
 │   ├── LineaA_KNN.ipynb
 │   └── LineaB_SVM.ipynb
 │   └── Datos_Hospital.xlsx
+│   └── Datos_Seguros.csv
 │   └── Base Etiquetada para tfidf
 │   └── Base Etiquetada para Word2Vec                                                     
 └── report/                             # Informe LaTeX, bibliografía, figuras y PDF final.
