@@ -117,7 +117,7 @@ Los datasets no se incluyen en el repositorio porque contienen información priv
 
 1. Inicie sesión con la cuenta a la que se otorgó permiso de acceso.
 2. Abra el enlace de Google Drive correspondiente a la línea de trabajo.
-3. Descargue manualmente el archivo o carpeta compartida.
+3. Descargue manualmente los archivos.
 4. Guarde los archivos originales en la misma altura que los notebooks
 5. Ejecute el notebook de la línea correspondiente.
 
