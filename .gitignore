@@ -1,4 +1,4 @@
-# Entornos y archivos de Python
+# Entornos Python
 .venv/
 venv/
 __pycache__/
@@ -6,26 +6,16 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 
-# Datos privados o pesados
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-!data/README.md
+# Artefactos generados (se recrean ejecutando los notebooks)
+notebooks/artifacts/
 
-# Objetos, modelos y resultados pesados
-models/*
-!models/.gitkeep
-outputs/*
-!outputs/.gitkeep
-
-# Archivos temporales y del sistema
+# Archivos del sistema
 .DS_Store
 Thumbs.db
 *.tmp
 *.log
 
-# Archivos generados por LaTeX
+# Archivos auxiliares de LaTeX
 report/*.aux
 report/*.bbl
 report/*.blg
