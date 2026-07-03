@@ -1,0 +1,1012 @@
+\documentclass[12pt,a4paper]{article}
+
+% ============================================================
+% INFORME FINAL --- CONFIGURACIÓN BÁSICA
+% Este archivo compila con pdfLaTeX en Overleaf.
+% ============================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{top=2.5cm,bottom=2.5cm,left=2.7cm,right=2.7cm}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{placeins}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=blue,
+    urlcolor=blue,
+    pdftitle={Análisis de verbatims mediante procesamiento de lenguaje natural y clasificación multietiqueta},
+    pdfauthor={Franco Reinoso y Gustavo Montoya}
+}
+
+% Columnas de tablas con alineación a la izquierda e hifenación controlada.
+% Evitan espacios excesivos en celdas angostas.
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\newcolumntype{P}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\newcommand{\code}[1]{\nolinkurl{#1}}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{1em}
+\setlength{\tabcolsep}{4pt}
+
+% ============================================================
+% PORTADA
+% Reemplazar los campos entre corchetes si corresponde.
+% ============================================================
+\title{\textbf{Análisis de verbatims mediante procesamiento de lenguaje natural y clasificación multietiqueta}}
+\author{
+Franco Reinoso \quad -- \quad Gustavo Montoya\\[0.4em]
+\small Universidad Técnica Federico Santa María\\
+\small Introducción al Aprendizaje Automático\\
+\small Profesor: Alejandro Veloz
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+El presente proyecto analiza comentarios abiertos, también denominados \textit{verbatims}, mediante técnicas de procesamiento de lenguaje natural y clasificación multietiqueta. El trabajo se organiza en dos líneas experimentales desarrolladas de manera independiente sobre conjuntos de datos provenientes de dominios distintos. En ambos casos, el flujo considera estructuración de datos, limpieza textual, generación de variantes de preprocesamiento, extracción de características, entrenamiento, ajuste de hiperparámetros, evaluación y análisis de resultados.
+
+La primera línea de trabajo, desarrollada sobre comentarios de una encuesta de satisfacción del sector seguros, transformó cuatro preguntas abiertas a formato largo y obtuvo 6.119 comentarios válidos. Sobre una muestra manualmente etiquetada de 1.500 comentarios se evaluaron cinco variantes de texto y dos representaciones numéricas: TF-IDF con n-gramas y Word2Vec. Las combinaciones resultantes se evaluaron con K-Nearest Neighbors (KNN) en un escenario de clasificación multietiqueta. Antes de calibrar los umbrales de decisión, el mejor resultado en prueba correspondió a TF-IDF con texto lematizado, con precisión macro de 0.9177, recall macro de 0.7377 y F1 macro de 0.8133. Posteriormente, una etapa de ajuste de umbrales por categoría seleccionó TF-IDF con stemming como alternativa final orientada a un mejor equilibrio entre recuperación y precisión, con recall macro de 0.8600, precisión macro de 0.7493 y F1 macro de 0.7952.
+
+La segunda línea de trabajo analiza comentarios del ámbito hospitalario. Sobre 177.530 comentarios válidos se extrajo una muestra estratificada de 40.000 y se construyeron cinco variantes de preprocesamiento. Las representaciones TF-IDF y Word2Vec se evaluaron con SVM en modo supervisado con solo el 10\% de las etiquetas disponibles (semilla) y en modo semi-supervisado mediante self-training. En total se compararon 20 configuraciones. La mejor configuración en self-training correspondió a TF-IDF con stemming y SVM, con F1 macro de 0.666. Ajustando hiperparámetros sobre el conjunto de entrenamiento etiquetado, el modelo final alcanzó F1 macro de 0.959 y exactitud de 0.995 en prueba.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introducción y descripción del problema}
+% ============================================================
+
+Los comentarios abiertos contienen información relevante sobre la experiencia de usuarios, clientes o pacientes, pero su carácter no estructurado dificulta su análisis sistemático. Para utilizar estos textos en tareas de clasificación, es necesario transformarlos en representaciones numéricas que permitan a los algoritmos identificar patrones y relaciones entre los comentarios. El desempeño de estos enfoques depende, entre otros factores, de la calidad del preprocesamiento, de la representación textual, de la definición de categorías y de la disponibilidad de datos etiquetados \cite{kowsari2019}.
+
+El objetivo general del proyecto es comparar el comportamiento de modelos de clasificación sobre dos conjuntos de comentarios abiertos analizados de manera independiente. La comparación considera el efecto de distintas decisiones de preprocesamiento, representaciones numéricas, configuraciones de hiperparámetros y métricas de desempeño. El trabajo no busca establecer una regla universal acerca de qué representación es superior; busca generar evidencia experimental situada en los corpus, taxonomías, muestras etiquetadas y configuraciones implementadas por cada integrante.
+
+La primera línea de trabajo presenta resultados completos con KNN sobre el conjunto de comentarios del sector seguros. La segunda línea sigue una estructura metodológica paralela con SVM sobre un conjunto de datos del ámbito hospitalario. Esta organización permite integrar resultados de dominios textuales distintos sin asumir que sus distribuciones, etiquetas o configuraciones óptimas sean necesariamente equivalentes.
+
+% ============================================================
+\section{Organización del proyecto y alcance de las líneas de trabajo}
+% ============================================================
+
+El proyecto contempla dos conjuntos de datos y dos líneas de trabajo desarrolladas en paralelo. Cada línea contiene su propio proceso de preparación de datos, representación textual, entrenamiento, ajuste de hiperparámetros, evaluación y análisis de resultados. En consecuencia, las métricas y conclusiones deben interpretarse primero dentro de cada conjunto de datos y, posteriormente, compararse solo cuando las definiciones de las tareas y los criterios de evaluación lo permitan.
+
+\begin{table}[htbp]
+\centering
+\caption{Organización general de las líneas de trabajo.}
+\label{tab:organizacion_lineas}
+\small
+\begin{tabularx}{\textwidth}{@{}P{3.1cm}P{3.4cm}Y@{}}
+\toprule
+\textbf{Línea de trabajo} & \textbf{Responsable} & \textbf{Alcance} \\
+\midrule
+Línea A: comentarios del sector seguros & Gustavo Montoya & Procesamiento de cuatro preguntas abiertas, generación de cinco variantes textuales, representación con TF-IDF y Word2Vec, clasificación multietiqueta KNN, ajuste de hiperparámetros y evaluación experimental. \\
+\addlinespace
+Línea B: comentarios del ámbito hospitalario & Franco Reinoso & Procesamiento de 177.530 comentarios hospitalarios, generación de cinco variantes textuales, representación con TF-IDF y Word2Vec, clasificación semi-supervisada con SVM mediante self-training, ajuste de hiperparámetros y evaluación experimental sobre 20 configuraciones. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+% ============================================================
+\section{Datasets utilizados}
+% ============================================================
+
+\subsection{Línea A: conjunto de comentarios del sector seguros}
+
+La Línea A utiliza comentarios provenientes de una encuesta de satisfacción del sector seguros. La base original contiene 13.113 registros y 233 columnas. Para el análisis textual se seleccionaron las preguntas abiertas \code{Q2\_10\_TEXT}, \code{Q3}, \code{Q4} y \code{Q5}. Antes de la reestructuración, estas columnas contenían 1.956, 1.634, 339 y 2.190 respuestas no nulas, respectivamente.
+
+La base fue transformada desde formato ancho a formato largo mediante la función \code{melt} de \code{pandas}, generando una fila por comentario potencial. A partir de 52.452 combinaciones iniciales, se eliminaron valores nulos, celdas vacías y textos residuales como \code{nan}. Como resultado, se obtuvo un universo de 6.119 comentarios válidos para el procesamiento posterior.
+
+\begin{table}[htbp]
+\centering
+\caption{Resumen del conjunto de datos de la Línea A.}
+\label{tab:dataset_a_resumen}
+\small
+\begin{tabularx}{\textwidth}{@{}P{5.4cm}Y@{}}
+\toprule
+\textbf{Elemento} & \textbf{Resultado} \\
+\midrule
+Base original & 13.113 registros y 233 columnas. \\
+Preguntas abiertas utilizadas & \code{Q2\_10\_TEXT}, \code{Q3}, \code{Q4} y \code{Q5}. \\
+Combinaciones iniciales luego de \code{melt} & 52.452 filas potenciales. \\
+Comentarios válidos después de limpieza inicial & 6.119 comentarios. \\
+Comentarios etiquetados manualmente & 1.500 comentarios. \\
+Tipo de problema & Clasificación multietiqueta con cinco categorías temáticas. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+\subsection{Línea B: conjunto de comentarios del ámbito hospitalario}
+
+La Línea B utiliza comentarios de una encuesta de satisfacción del ámbito hospitalario. La base original contiene 252.396 registros y 14 columnas. Para el análisis se seleccionaron la columna \code{comentario}, la calificación global \code{calificacion\_IBB} y cinco columnas binarias de tópico: \code{atencion}, \code{espera}, \code{pago}, \code{agendamiento} e \code{infraestructura}.
+
+La limpieza eliminó artefactos de exportación Excel, normalizó el texto, descartó comentarios con menos de cuatro palabras reales y eliminó duplicados. Tras este proceso se obtuvieron 177.530 comentarios válidos. Para mantener la carga computacional acotada se extrajo una muestra estratificada de 40.000 comentarios según la distribución de \code{calificacion\_IBB}.
+
+Para el experimento semi-supervisado se utilizaron únicamente los comentarios con exactamente un tópico activo, formando un pool multiclase de 21.998 registros distribuidos en cinco categorías: \code{atencion} (19.221 casos), \code{espera} (1.778), \code{pago} (481), \code{infraestructura} (416) y \code{agendamiento} (102). Este subconjunto presenta un desbalance marcado, con la categoría \code{atencion} representando el 87\% de los casos.
+
+\begin{table}[htbp]
+\centering
+\caption{Resumen del conjunto de datos de la Línea B.}
+\label{tab:dataset_b_resumen}
+\small
+\begin{tabularx}{\textwidth}{@{}P{5.4cm}Y@{}}
+\toprule
+\textbf{Elemento} & \textbf{Resultado} \\
+\midrule
+Base original & 252.396 registros y 14 columnas. \\
+Columnas textuales utilizadas & \code{comentario}, \code{calificacion\_IBB} y cinco columnas de tópico (\code{atencion}, \code{espera}, \code{pago}, \code{agendamiento}, \code{infraestructura}). \\
+Comentarios válidos después de limpieza & 177.530 comentarios tras limpieza y eliminación de duplicados. \\
+Comentarios utilizados en experimento & 21.998 con exactamente un tópico (pool multiclase); semilla etiquetada: 1.759. \\
+Tipo de problema & Clasificación multiclase de cinco categorías con escenario semi-supervisado (self-training). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+% ============================================================
+\section{Descripción de la solución implementada}
+% ============================================================
+
+\subsection{Arquitectura general}
+
+La solución global se implementó como dos pipelines reproducibles y paralelos. Aunque cada línea trabaja con un corpus propio, ambas comparten una lógica general: ingesta y estructuración de datos, limpieza y normalización, generación de variantes textuales, extracción de características, construcción de datos etiquetados, entrenamiento, ajuste de hiperparámetros, evaluación y análisis crítico.
+
+\begin{center}
+\fbox{\begin{minipage}{0.94\textwidth}
+\centering
+\small
+\textbf{Dataset A} $\rightarrow$ \textbf{preprocesamiento A} $\rightarrow$ \textbf{representaciones A} $\rightarrow$ \textbf{modelos A} $\rightarrow$ \textbf{evaluación A}\\[0.4em]
+\textbf{Dataset B} $\rightarrow$ \textbf{preprocesamiento B} $\rightarrow$ \textbf{representaciones B} $\rightarrow$ \textbf{modelos B} $\rightarrow$ \textbf{evaluación B}\\[0.4em]
+\textbf{Resultados por línea} $\rightarrow$ \textbf{síntesis comparativa del proyecto}
+\end{minipage}}
+\end{center}
+
+\subsection{Módulos principales y decisiones de diseño}
+
+\begin{table}[htbp]
+\centering
+\caption{Módulos principales de los pipelines implementados.}
+\label{tab:modulos}
+\small
+\begin{tabularx}{\textwidth}{@{}P{3.2cm}P{4.2cm}Y@{}}
+\toprule
+\textbf{Módulo} & \textbf{Función principal} & \textbf{Decisión de diseño relevante} \\
+\midrule
+Estructuración de comentarios & Transformar las fuentes originales a una estructura apta para procesamiento textual. & La separación por línea permite adaptar el tratamiento a las particularidades de cada fuente. \\
+\addlinespace
+Limpieza textual & Eliminar ruido técnico y normalizar el contenido. & Se mantiene una estrategia conservadora para evitar eliminar señales semánticas potencialmente útiles. \\
+\addlinespace
+Preprocesamiento experimental & Crear versiones alternativas del mismo comentario. & Las variantes se evalúan separadamente para atribuir diferencias de desempeño a decisiones específicas de preprocesamiento. \\
+\addlinespace
+Extracción de características & Transformar texto en vectores numéricos. & Se comparan representaciones alternativas de acuerdo con el diseño experimental de cada línea. \\
+\addlinespace
+Etiquetado y trazabilidad & Vincular comentarios, etiquetas y matrices de características. & Cada pipeline conserva identificadores técnicos para asegurar correspondencia fila a fila. \\
+\addlinespace
+Modelamiento y evaluación & Entrenar, ajustar y comparar configuraciones de clasificación. & Las divisiones train--validation--test se mantienen internamente consistentes dentro de cada línea. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+\subsection{Tecnologías, librerías y herramientas}
+
+Ambas líneas de trabajo se desarrollaron en Python mediante Jupyter Notebook y comparten el mismo conjunto base de librerías: \code{pandas} y \code{NumPy} para manipulación de datos; \code{scikit-learn} para extracción de características, clasificadores, búsqueda de hiperparámetros y métricas de evaluación; \code{NLTK} para stopwords y stemming mediante \code{SnowballStemmer}; \code{spaCy} con el modelo \code{es\_core\_news\_sm} para lematización; y \code{Gensim} para Word2Vec \cite{sklearn}.
+
+La diferencia entre líneas reside en los componentes de \code{scikit-learn} utilizados. La Línea A empleó \code{KNeighborsClassifier} para clasificación multietiqueta. La Línea B empleó \code{LinearSVC} con calibración de probabilidad (\code{CalibratedClassifierCV}) y \code{SelfTrainingClassifier} para el esquema semi-supervisado, además de \code{GridSearchCV} para el ajuste de hiperparámetros.
+
+% ============================================================
+\section{Preparación y preprocesamiento de los comentarios}
+% ============================================================
+
+\subsection{Línea A: limpieza y normalización}
+
+El preprocesamiento de la Línea A fue conservador. Se normalizaron caracteres Unicode, se transformaron los textos a minúsculas, se eliminaron etiquetas HTML, se reemplazaron URLs, correos electrónicos, teléfonos y números largos por tokens genéricos, se corrigieron saltos de línea y tabulaciones, se redujeron repeticiones excesivas de caracteres y se eliminaron símbolos no informativos. Adicionalmente, se aplicó un diccionario de abreviaciones para normalizar expresiones como \code{pq}, \code{xq}, \code{q}, \code{tb}, \code{tbn} y \code{hrs}.
+
+\subsection{Línea A: variantes de texto evaluadas}
+
+Se construyeron cinco versiones de cada comentario para analizar el efecto del preprocesamiento sobre la clasificación. Estas variantes se presentan en la Tabla \ref{tab:variantes_texto_a}.
+
+\begin{table}[htbp]
+\centering
+\caption{Versiones de texto evaluadas en la Línea A.}
+\label{tab:variantes_texto_a}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}P{4.4cm}Y@{}}
+\toprule
+\textbf{Variable} & \textbf{Descripción} \\
+\midrule
+\code{texto\_v1\_limpio} & Texto con limpieza conservadora, manteniendo tildes, stopwords y la estructura básica del comentario. \\
+\addlinespace
+\code{texto\_v2\_sin\_tildes} & Versión equivalente al texto limpio, pero sin tildes y preservando la letra \code{ñ}. \\
+\addlinespace
+\code{texto\_v3\_sin\_stopwords} & Texto sin stopwords controladas. Se conservan negaciones como \code{no}, \code{sin}, \code{nunca}, \code{ni} y \code{tampoco}. \\
+\addlinespace
+\code{texto\_v4\_stemming} & Texto transformado mediante stemming en español con \code{SnowballStemmer}. \\
+\addlinespace
+\code{texto\_v5\_lemma} & Texto lematizado con spaCy, reduciendo las palabras a su forma base. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+La eliminación de stopwords se aplicó de manera controlada porque, en comentarios breves, las negaciones pueden modificar completamente el significado. Expresiones como ``no informaron'', ``sin respuesta'' o ``nunca llegó'' perderían parte de su sentido si se eliminan estas palabras.
+
+\subsection{Línea A: taxonomía y etiquetado multietiqueta}
+
+Se etiquetaron manualmente 1.500 comentarios mediante cinco categorías temáticas. El problema se definió como multietiqueta, de modo que un comentario puede activar más de una categoría simultáneamente. En consecuencia, la suma de etiquetas positivas supera el número total de comentarios etiquetados.
+
+\begin{table}[htbp]
+\centering
+\caption{Distribución de categorías en la muestra etiquetada de la Línea A.}
+\label{tab:categorias_a}
+\small
+\begin{tabularx}{\textwidth}{@{}Y r@{}}
+\toprule
+\textbf{Categoría} & \textbf{Asignaciones positivas} \\
+\midrule
+\code{cat\_Pago\_monto\_y\_calculo} & 343 \\
+\code{cat\_Tiempos\_y\_oportunidad} & 339 \\
+\code{cat\_Informacion\_y\_comunicacion} & 327 \\
+\code{cat\_Atencion\_y\_gestion\_del\_servicio} & 320 \\
+\code{cat\_Satisfaccion\_o\_comentario\_general} & 300 \\
+\midrule
+\textbf{Total de asignaciones positivas} & \textbf{1.629} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+La muestra de la Línea A contiene 1.378 comentarios con una sola etiqueta, 116 con dos etiquetas, 5 con tres etiquetas y 1 con cuatro etiquetas. Esta distribución confirma que el problema no puede modelarse adecuadamente como clasificación multiclase exclusiva.
+
+\subsection{Línea B: limpieza y normalización}
+
+La estrategia de limpieza de la Línea B es equivalente a la de la Línea A: normalización Unicode, conversión a minúsculas, eliminación de etiquetas HTML, sustitución de URLs, correos electrónicos, teléfonos y números largos por tokens genéricos, reducción de repeticiones excesivas de caracteres, eliminación de símbolos no informativos y aplicación del mismo diccionario de abreviaciones.
+
+Las diferencias respecto a la Línea A son dos. Primero, el dataset hospitalario provenía de un archivo Excel que introducía el artefacto \code{\_x000D\_} en los saltos de línea; este artefacto debió eliminarse como paso previo antes de aplicar cualquier otra normalización. Segundo, a diferencia de la Línea A (que partió de cuatro preguntas abiertas en formato ancho y las unificó mediante un \code{melt}), la Línea B contaba con una única columna \code{comentario} y no requirió reestructuración. En su lugar, se aplicó un filtro de contenido mínimo, descartando comentarios con menos de cuatro palabras reales y eliminando duplicados exactos. Tras este proceso, de los 252.396 registros originales se obtuvieron 177.530 comentarios válidos.
+
+\subsection{Línea B: variantes de texto evaluadas}
+
+Se construyeron las mismas cinco variantes de texto que en la Línea A, descriptas en la Tabla \ref{tab:variantes_texto_b}. Las variantes de stemming y lematización se generaron sobre la muestra de 40.000 comentarios para mantener la carga computacional acotada.
+
+\begin{table}[htbp]
+\centering
+\caption{Versiones de texto evaluadas en la Línea B.}
+\label{tab:variantes_texto_b}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}P{4.4cm}Y@{}}
+\toprule
+\textbf{Variable} & \textbf{Descripción} \\
+\midrule
+\code{comentario\_limpio} & Texto con limpieza conservadora, manteniendo tildes, stopwords y la estructura básica del comentario. \\
+\addlinespace
+\code{sin\_tildes} & Versión equivalente al texto limpio, pero sin tildes y preservando la letra \code{ñ}. \\
+\addlinespace
+\code{sin\_stopwords} & Texto sin stopwords controladas. Se conservan negaciones como \code{no}, \code{sin}, \code{nunca}, \code{ni} y \code{tampoco}. \\
+\addlinespace
+\code{stemming} & Texto transformado mediante stemming en español con \code{SnowballStemmer}. \\
+\addlinespace
+\code{lematizado} & Texto lematizado con spaCy, reduciendo las palabras a su forma base. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+\subsection{Línea B: taxonomía y etiquetado}
+
+El etiquetado no fue manual: las cinco columnas binarias de tópico ya presentes en el dataset se usaron como verdad de terreno. Para el experimento semi-supervisado se seleccionaron únicamente los registros con exactamente un tópico activo, definiendo un problema de clasificación multiclase de cinco categorías. El subconjunto resultante, denominado pool multiclase, contiene 21.998 comentarios. La distribución por categoría se presenta en la Tabla \ref{tab:categorias_b}.
+
+\begin{table}[htbp]
+\centering
+\caption{Distribución de categorías en el pool multiclase de la Línea B.}
+\label{tab:categorias_b}
+\small
+\begin{tabularx}{\textwidth}{@{}Y r@{}}
+\toprule
+\textbf{Categoría} & \textbf{Comentarios} \\
+\midrule
+\code{atencion}         & 19.221 \\
+\code{espera}           & 1.778 \\
+\code{pago}             & 481 \\
+\code{infraestructura}  & 416 \\
+\code{agendamiento}     & 102 \\
+\midrule
+\textbf{Total pool multiclase} & \textbf{21.998} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+La distribución muestra un desbalance marcado: la categoría \code{atencion} concentra el 87\% de los casos. Este desbalance es relevante para la interpretación del F1 macro y para el comportamiento del self-training en las clases minoritarias.
+
+% ============================================================
+\section{Representaciones textuales}
+% ============================================================
+
+\subsection{Línea A: TF-IDF con n-gramas}
+
+TF-IDF transforma cada comentario en un vector disperso que representa la importancia relativa de palabras y secuencias de palabras dentro del corpus. Se utilizaron unigramas y bigramas mediante \code{ngram\_range=(1,2)}, permitiendo conservar tanto términos individuales como expresiones compuestas, por ejemplo, ``pago pendiente'', ``sin respuesta'' o ``monto incorrecto''.
+
+La configuración utilizada fue \code{min\_df=2}, \code{max\_df=0.95}, \code{sublinear\_tf=True}, \code{lowercase=False} y tipo de dato \code{float32}. El parámetro \code{lowercase=False} se utilizó porque la conversión a minúsculas ya había sido realizada durante la limpieza previa. En la representación inicial del universo completo, TF-IDF produjo una matriz dispersa de 6.119 filas y 7.110 características.
+
+\subsection{Línea A: Word2Vec promedio}
+
+Word2Vec genera vectores densos para las palabras a partir de sus contextos de aparición. Se utilizó Skip-gram con vectores de 100 dimensiones, ventana de contexto igual a 5, \code{min\_count=2} y semilla 42. El vocabulario inicial generado para el corpus completo incluyó 2.193 términos.
+
+Word2Vec produce vectores a nivel de palabra, mientras que KNN requiere una representación única por comentario. Por esta razón, el vector de cada comentario se construyó mediante el promedio de los embeddings de las palabras presentes en su vocabulario. Esta decisión genera una representación densa de dimensión fija, aunque puede perder información sobre el orden de las palabras y sobre expresiones locales relevantes.
+
+\begin{table}[htbp]
+\centering
+\caption{Configuración de las representaciones textuales de la Línea A.}
+\label{tab:representaciones_a}
+\small
+\begin{tabularx}{\textwidth}{@{}P{3.4cm}P{4.7cm}Y@{}}
+\toprule
+\textbf{Representación} & \textbf{Configuración} & \textbf{Salida} \\
+\midrule
+TF-IDF con n-gramas & Unigramas y bigramas; \code{min\_df=2}; \code{max\_df=0.95}; \code{sublinear\_tf=True}. & Matriz dispersa de características léxicas. \\
+\addlinespace
+Word2Vec & Skip-gram; 100 dimensiones; ventana 5; \code{min\_count=2}; promedio de embeddings por comentario. & Matriz densa de 100 dimensiones por comentario. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+\subsection{Línea B: parámetros y resultados de las representaciones}
+
+La Línea B aplicó las mismas dos representaciones descritas en las secciones anteriores. Los parámetros difieren en dos aspectos respecto a la Línea A, ambos justificados por el mayor tamaño del corpus. En TF-IDF, \code{min\_df} se fijó en 5 (frente a 2 en la Línea A) para descartar términos muy poco frecuentes en un vocabulario más amplio, y se agregó \code{norm="l2"} para normalizar los vectores. En Word2Vec, \code{min\_count} se fijó en 3 (frente a 2) por la misma razón. El resto de la configuración es idéntica: unigramas y bigramas, Skip-gram con 100 dimensiones y ventana 5, y representación por comentario mediante promedio de embeddings. La Tabla \ref{tab:representaciones_b} resume los parámetros y las dimensiones de salida obtenidas.
+
+\begin{table}[htbp]
+\centering
+\caption{Configuración y salida de las representaciones textuales de la Línea B.}
+\label{tab:representaciones_b}
+\small
+\begin{tabularx}{\textwidth}{@{}P{3.4cm}P{4.7cm}Y@{}}
+\toprule
+\textbf{Representación} & \textbf{Configuración} & \textbf{Salida} \\
+\midrule
+TF-IDF con n-gramas & \code{min\_df=5}; \code{max\_df=0.95}; \code{sublinear\_tf=True}; \code{norm="l2"} (resto igual a Línea A). & Matriz dispersa de 40.000 × 22.585 características. \\
+\addlinespace
+Word2Vec & \code{min\_count=3}; \code{epochs=10} (resto igual a Línea A). & Matriz densa de 40.000 × 100; vocabulario de 8.569 términos. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+% ============================================================
+\section{Metodología experimental}
+% ============================================================
+
+\subsection{Criterios comunes de comparación}
+
+Las evaluaciones se diseñaron para comparar configuraciones dentro de cada línea de trabajo. Cada pipeline mantiene separadas sus propias observaciones, etiquetas, representaciones y particiones de datos. Esta decisión evita transferir conclusiones de un dominio a otro sin evidencia empírica y permite que las comparaciones entre líneas se realicen únicamente a nivel metodológico o mediante métricas efectivamente comparables.
+
+\subsection{Línea A: diseño de los experimentos}
+
+En la Línea A se construyeron diez experimentos independientes, combinando las cinco versiones de texto con las dos representaciones numéricas. No se concatenaron las versiones de texto en una misma matriz, ya que el objetivo fue medir de manera aislada el efecto de cada decisión de preprocesamiento.
+
+\begin{table}[htbp]
+\centering
+\caption{Diseño experimental de la Línea A.}
+\label{tab:diseno_experimental_a}
+\small
+\begin{tabularx}{\textwidth}{@{}P{1.3cm}P{3.4cm}Y@{}}
+\toprule
+\textbf{Grupo} & \textbf{Representación} & \textbf{Versiones evaluadas} \\
+\midrule
+1--5 & TF-IDF con n-gramas & Limpio, sin tildes, sin stopwords, stemming y lematización. \\
+6--10 & Word2Vec promedio & Limpio, sin tildes, sin stopwords, stemming y lematización. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+Todos los experimentos de esta línea utilizaron la misma semilla, las mismas categorías objetivo y la misma división train--validation--test. Esto permite atribuir las diferencias observadas principalmente a la representación textual, la variante de preprocesamiento y la configuración KNN seleccionada.
+
+\subsection{Línea A: división de entrenamiento, validación y prueba}
+
+La muestra etiquetada se dividió mediante estratificación multietiqueta. El objetivo fue mantener, en lo posible, la presencia relativa de cada categoría en los subconjuntos. La partición utilizada se presenta en la Tabla \ref{tab:particion_a}.
+
+\begin{table}[htbp]
+\centering
+\caption{División de los comentarios etiquetados de la Línea A.}
+\label{tab:particion_a}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Partición} & \textbf{Comentarios} & \textbf{Proporción aproximada} \\
+\midrule
+Entrenamiento & 1.051 & 70\% \\
+Validación & 226 & 15\% \\
+Prueba & 223 & 15\% \\
+\midrule
+Total & 1.500 & 100\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+Para evitar fuga de información, los vectores TF-IDF y los modelos Word2Vec utilizados durante la validación fueron ajustados únicamente con los comentarios de entrenamiento. Después de seleccionar la mejor configuración KNN de cada experimento con el conjunto de validación, la representación se volvió a ajustar usando entrenamiento más validación. El conjunto de prueba se mantuvo aislado hasta la evaluación final.
+
+\subsection{Línea A: clasificador KNN}
+
+KNN es un algoritmo no paramétrico basado en instancias. En lugar de estimar coeficientes mediante la optimización de una función de pérdida, el algoritmo almacena los ejemplos de entrenamiento y clasifica un ejemplo nuevo según sus vecinos más cercanos en el espacio de características. Por esta razón, KNN no utiliza función de costo, descenso de gradiente ni épocas de entrenamiento.
+
+En la Línea A, KNN se utilizó en un escenario multietiqueta, donde cada variable \code{cat\_} representa una salida binaria. El tiempo de ajuste suele ser bajo porque la etapa \code{fit} almacena los ejemplos de referencia; en cambio, el tiempo de predicción es especialmente relevante, pues el algoritmo debe calcular distancias entre los comentarios nuevos y los ejemplos almacenados.
+
+La distancia coseno utilizada en parte de las configuraciones se expresa como:
+
+\begin{equation}
+ d_{\mathrm{coseno}}(\mathbf{x},\mathbf{y}) =
+ 1 - \frac{\mathbf{x}\cdot\mathbf{y}}
+ {\|\mathbf{x}\|\|\mathbf{y}\|}.
+\end{equation}
+
+Para las configuraciones Minkowski se utilizó:
+
+\begin{equation}
+ d_p(\mathbf{x},\mathbf{y}) =
+ \left( \sum_{j=1}^{m}|x_j-y_j|^p \right)^{\frac{1}{p}},
+\end{equation}
+
+donde $p=1$ corresponde a distancia Manhattan y $p=2$ a distancia euclidiana.
+
+\subsection{Línea A: búsqueda de hiperparámetros}
+
+Se evaluaron los valores \code{n\_neighbors} iguales a 3, 5, 7, 9 y 11; ponderación uniforme y por distancia; métrica coseno y Minkowski; valores $p=1$ y $p=2$ para Minkowski; y distintas estrategias de búsqueda para las configuraciones Word2Vec.
+
+\begin{table}[htbp]
+\centering
+\caption{Espacio de búsqueda de hiperparámetros KNN en la Línea A.}
+\label{tab:grilla_knn_a}
+\small
+\begin{tabularx}{\textwidth}{@{}P{2.6cm}P{5.6cm}Y@{}}
+\toprule
+\textbf{Parámetro} & \textbf{Valores evaluados} & \textbf{Interpretación} \\
+\midrule
+\code{n\_neighbors} & 3, 5, 7, 9 y 11 & Cantidad de vecinos utilizados en la decisión de clasificación. \\
+\addlinespace
+\code{weights} & \code{uniform}, \code{distance} & Votación equivalente o ponderada por cercanía. \\
+\addlinespace
+\code{metric} & \code{cosine}, \code{minkowski} & Medida de similitud o distancia entre vectores. \\
+\addlinespace
+\code{p} & 1 y 2 & Parámetro de Minkowski: Manhattan y euclidiana, respectivamente. \\
+\addlinespace
+\code{algorithm} & \code{auto}, \code{ball\_tree}, \code{kd\_tree}, \code{brute} & Estrategia de búsqueda de vecinos. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+Para TF-IDF se utilizó búsqueda \code{brute}, ya que esta representación es dispersa y de alta dimensionalidad. Se evaluaron 30 configuraciones por cada variante TF-IDF y 90 configuraciones por cada variante Word2Vec, totalizando 600 configuraciones KNN. La configuración ganadora de cada experimento fue seleccionada mediante F1 macro sobre el conjunto de validación. En caso de empate, se priorizó F1 micro, precisión macro y menor tiempo de predicción.
+
+\subsection{Línea B: diseño de los experimentos}
+
+Se construyeron 20 experimentos combinando las cinco variantes de texto, las dos representaciones y los dos modos de entrenamiento (supervisado y self-training), con SVM como clasificador único. No se concatenaron variantes en una misma matriz; el objetivo fue medir de manera aislada el efecto de cada decisión de preprocesamiento. El diseño se presenta en la Tabla \ref{tab:diseno_experimental_b}.
+
+\begin{table}[htbp]
+\centering
+\caption{Diseño experimental de la Línea B.}
+\label{tab:diseno_experimental_b}
+\small
+\begin{tabularx}{\textwidth}{@{}P{1.3cm}P{3.4cm}Y@{}}
+\toprule
+\textbf{Grupo} & \textbf{Representación} & \textbf{Versiones evaluadas} \\
+\midrule
+1--5 & TF-IDF con n-gramas & Limpio, sin tildes, sin stopwords, stemming y lematizado. \\
+6--10 & Word2Vec promedio & Limpio, sin tildes, sin stopwords, stemming y lematizado. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+Cada uno de los diez grupos se evaluó con un clasificador (SVM) y en dos modos (supervisado con solo la semilla y self-training), resultando en 20 configuraciones totales. Todos los experimentos utilizaron la misma semilla aleatoria, el mismo pool multiclase y la misma partición train--test.
+
+\subsection{Línea B: división del pool etiquetado}
+
+El pool multiclase se dividió mediante estratificación por categoría para mantener la distribución relativa en cada subconjunto. A diferencia de la Línea A, no se usó un conjunto de validación independiente: la comparación entre las 20 configuraciones se realizó directamente sobre el conjunto de prueba. La partición se presenta en la Tabla \ref{tab:particion_b}.
+
+\begin{table}[htbp]
+\centering
+\caption{División del pool multiclase de la Línea B.}
+\label{tab:particion_b}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Partición} & \textbf{Comentarios} & \textbf{Proporción} \\
+\midrule
+Entrenamiento — semilla etiquetada & 1.759 & 10\% del entrenamiento \\
+Entrenamiento — no etiquetado     & 15.839 & 90\% del entrenamiento \\
+Prueba (etiquetada, reservada)    & 4.400 & 20\% del pool total \\
+\midrule
+Total pool multiclase & 21.998 & 100\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+El conjunto de prueba se mantuvo aislado en todo momento. Las etiquetas del conjunto de entrenamiento no semilla fueron ocultadas durante la fase de self-training, revelándose solo para calcular las métricas finales.
+
+\subsection{Línea B: clasificador SVM}
+
+Se utilizó SVM con calibración de probabilidad (\code{CalibratedClassifierCV(LinearSVC)}), que genera puntuaciones de confianza necesarias para el criterio de umbral del self-training.
+
+El self-training (\code{SelfTrainingClassifier}, umbral 0.80) utiliza el clasificador base para etiquetar iterativamente los ejemplos no etiquetados cuya probabilidad predicha supera ese umbral, reentrenando el modelo en cada iteración hasta que no quedan ejemplos por etiquetar o se alcanza la convergencia.
+
+\subsection{Línea B: búsqueda de hiperparámetros}
+
+Sobre la mejor configuración en self-training se realizó una búsqueda exhaustiva de hiperparámetros con \code{GridSearchCV} y validación cruzada de 3 folds. El espacio de búsqueda se detalla en la Tabla \ref{tab:grilla_b}.
+
+\begin{table}[htbp]
+\centering
+\caption{Espacio de búsqueda de hiperparámetros en la Línea B.}
+\label{tab:grilla_b}
+\small
+\begin{tabularx}{\textwidth}{@{}P{2.6cm}P{5.6cm}Y@{}}
+\toprule
+\textbf{Clasificador} & \textbf{Parámetros evaluados} & \textbf{Interpretación} \\
+\midrule
+SVM (\code{LinearSVC}) & $C \in \{0.1,\ 1,\ 10\}$ & Parámetro de regularización: valores altos penalizan menos el margen. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+La búsqueda se realizó solo sobre la mejor variante encontrada en la comparación de 20 configuraciones, utilizando como criterio F1 macro. El conjunto de prueba no participó en este proceso.
+
+% ============================================================
+\section{Métricas de evaluación}
+% ============================================================
+
+Las evaluaciones realizadas utilizan métricas adecuadas para clasificación multietiqueta cuando la estructura de las etiquetas de cada línea de trabajo lo requiere. Se consideran precisión, recall y F1 por categoría, junto con promedios macro, micro y ponderados. La precisión se define como:
+
+\begin{equation}
+\mathrm{Precision} = \frac{TP}{TP+FP},
+\end{equation}
+
+donde $TP$ representa verdaderos positivos y $FP$ falsos positivos. El recall se define como:
+
+\begin{equation}
+\mathrm{Recall} = \frac{TP}{TP+FN},
+\end{equation}
+
+donde $FN$ representa falsos negativos. El F1-score combina ambas medidas:
+
+\begin{equation}
+F1 = 2\cdot \frac{\mathrm{Precision}\cdot\mathrm{Recall}}
+{\mathrm{Precision}+\mathrm{Recall}}.
+\end{equation}
+
+En la Línea A, F1 macro se utilizó como métrica principal para seleccionar hiperparámetros, ya que asigna el mismo peso a cada categoría y evita que las etiquetas más frecuentes dominen el criterio de selección. También se reportó la exactitud de subconjunto (\textit{accuracy exacta}), que considera correcta una predicción solo cuando coincide el conjunto completo de etiquetas de un comentario.
+
+Adicionalmente, se utilizó Hamming loss, que mide la proporción de decisiones de etiqueta incorrectas respecto del total de decisiones posibles. Esta métrica permite cuantificar errores parciales en problemas multietiqueta, incluso cuando la totalidad de etiquetas de un comentario no coincide exactamente.
+
+Para la Línea B las métricas utilizadas fueron exactitud, F1 macro y F1 ponderado sobre el conjunto de prueba de 4.400 comentarios. La métrica principal para comparar las 20 configuraciones fue F1 macro, que asigna el mismo peso a cada categoría independientemente de su frecuencia. Dado el desbalance marcado del pool multiclase (\code{atencion} concentra el 87\% de los casos), el F1 macro es más informativo que la exactitud para evaluar el comportamiento en clases minoritarias. Para el modelo final se reportaron también precisión, recall y F1-score por clase mediante \code{classification\_report}.
+
+% ============================================================
+\section{Resultados experimentales}
+% ============================================================
+
+\subsection{Línea A: hiperparámetros seleccionados}
+
+La Tabla \ref{tab:configuraciones_finales_a} presenta la mejor configuración KNN seleccionada para cada una de las diez combinaciones de representación y preprocesamiento de la Línea A. La selección fue realizada con el conjunto de validación antes de la medición final en prueba.
+
+\begin{table}[htbp]
+\centering
+\caption{Configuraciones KNN seleccionadas para la Línea A.}
+\label{tab:configuraciones_finales_a}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{cllcllcl}
+\toprule
+\textbf{N$^\circ$} & \textbf{Representación} & \textbf{Versión de texto} & \textbf{$k$} & \textbf{Pesos} & \textbf{Métrica} & \textbf{$p$} & \textbf{Algoritmo} \\
+\midrule
+1 & TF-IDF n-gramas & \code{texto\_v1\_limpio} & 7 & distance & cosine & -- & brute \\
+2 & TF-IDF n-gramas & \code{texto\_v2\_sin\_tildes} & 7 & distance & cosine & -- & brute \\
+3 & TF-IDF n-gramas & \code{texto\_v3\_sin\_stopwords} & 3 & uniform & cosine & -- & brute \\
+4 & TF-IDF n-gramas & \code{texto\_v4\_stemming} & 3 & uniform & cosine & -- & brute \\
+5 & TF-IDF n-gramas & \code{texto\_v5\_lemma} & 5 & distance & minkowski & 2 & brute \\
+6 & Word2Vec & \code{texto\_v1\_limpio} & 7 & uniform & cosine & -- & brute \\
+7 & Word2Vec & \code{texto\_v2\_sin\_tildes} & 3 & distance & cosine & -- & brute \\
+8 & Word2Vec & \code{texto\_v3\_sin\_stopwords} & 5 & distance & cosine & -- & brute \\
+9 & Word2Vec & \code{texto\_v4\_stemming} & 3 & distance & cosine & -- & brute \\
+10 & Word2Vec & \code{texto\_v5\_lemma} & 3 & distance & cosine & -- & brute \\
+\bottomrule
+\end{tabular}}
+\end{table}
+\FloatBarrier
+
+\subsection{Línea A: comparación global de los diez experimentos antes del ajuste de umbrales}
+
+La Tabla \ref{tab:resultados_globales_a} presenta los resultados base sobre el conjunto de prueba de la Línea A, antes del ajuste de umbrales por categoría. Las configuraciones están ordenadas de mayor a menor F1 macro. Los tiempos de predicción corresponden a la ejecución final de KNN sobre 223 comentarios de prueba; no incluyen el tiempo utilizado en la construcción de la representación ni la búsqueda previa de hiperparámetros.
+
+\begin{table}[htbp]
+\centering
+\caption{Resultados base de los experimentos KNN de la Línea A antes del ajuste de umbrales.}
+\label{tab:resultados_globales_a}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{cllrrrrrrr}
+\toprule
+\textbf{Rank} & \textbf{Representación} & \textbf{Versión} & \textbf{Accuracy} & \textbf{Prec. macro} & \textbf{Recall macro} & \textbf{F1 macro} & \textbf{F1 micro} & \textbf{Hamming loss} & \textbf{Pred. (s)} \\
+\midrule
+1 & TF-IDF n-gramas & \code{texto\_v5\_lemma} & 0.7265 & 0.9177 & 0.7377 & 0.8133 & 0.8182 & 0.0717 & 0.0995 \\
+2 & TF-IDF n-gramas & \code{texto\_v4\_stemming} & 0.7354 & 0.8713 & 0.7543 & 0.8051 & 0.8053 & 0.0798 & 0.0894 \\
+3 & TF-IDF n-gramas & \code{texto\_v3\_sin\_stopwords} & 0.7130 & 0.8730 & 0.7430 & 0.7958 & 0.7956 & 0.0834 & 0.0812 \\
+4 & TF-IDF n-gramas & \code{texto\_v2\_sin\_tildes} & 0.6906 & 0.9183 & 0.7051 & 0.7935 & 0.7963 & 0.0789 & 0.0894 \\
+5 & TF-IDF n-gramas & \code{texto\_v1\_limpio} & 0.6951 & 0.9132 & 0.7051 & 0.7900 & 0.7926 & 0.0807 & 0.0952 \\
+6 & Word2Vec & \code{texto\_v4\_stemming} & 0.7354 & 0.8299 & 0.7498 & 0.7825 & 0.7854 & 0.0897 & 0.0929 \\
+7 & Word2Vec & \code{texto\_v3\_sin\_stopwords} & 0.5830 & 0.7790 & 0.6071 & 0.6813 & 0.6805 & 0.1247 & 0.0875 \\
+8 & Word2Vec & \code{texto\_v5\_lemma} & 0.5830 & 0.7450 & 0.6205 & 0.6701 & 0.6756 & 0.1309 & 0.0991 \\
+9 & Word2Vec & \code{texto\_v1\_limpio} & 0.5471 & 0.8383 & 0.5489 & 0.6410 & 0.6505 & 0.1291 & 0.1003 \\
+10 & Word2Vec & \code{texto\_v2\_sin\_tildes} & 0.5471 & 0.7023 & 0.5859 & 0.6253 & 0.6258 & 0.1534 & 0.0926 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+\FloatBarrier
+
+Las cinco configuraciones TF-IDF ocuparon las primeras cinco posiciones del ranking por F1 macro. Este resultado indica que, bajo las condiciones experimentales de la Línea A, las características léxicas representadas mediante unigramas y bigramas ofrecieron mayor capacidad discriminativa que Word2Vec promedio.
+
+\subsection{Línea A: mejor resultado observado antes del ajuste de umbrales}
+
+Antes del ajuste de umbrales por categoría, el mejor resultado observado en prueba para la Línea A correspondió a \code{KNN\_\_TFIDF\_NGRAMS\_\_texto\_v5\_lemma}. Esta configuración utilizó texto lematizado, TF-IDF con unigramas y bigramas, cinco vecinos, ponderación por distancia y métrica Minkowski con $p=2$, equivalente a distancia euclidiana.
+
+\begin{table}[htbp]
+\centering
+\caption{Métricas del mejor resultado observado en la Línea A antes del ajuste de umbrales.}
+\label{tab:mejor_modelo_a}
+\small
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Accuracy exacta & 0.7265 \\
+Precision macro & 0.9177 \\
+Recall macro & 0.7377 \\
+F1 macro & 0.8133 \\
+Precision micro & 0.9184 \\
+Recall micro & 0.7377 \\
+F1 micro & 0.8182 \\
+F1 ponderado & 0.8143 \\
+Hamming loss & 0.0717 \\
+Tiempo de ajuste KNN & 0.0012 s \\
+Tiempo de predicción en prueba & 0.0995 s \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+La exactitud exacta de 0.7265 indica que aproximadamente el 72.65\% de los comentarios de prueba de la Línea A recibió exactamente el mismo conjunto de etiquetas que la anotación manual. Esta es una métrica estricta, ya que basta una etiqueta incorrecta, omitida o adicional para que el comentario sea considerado incorrecto en esta medida.
+
+\subsection{Línea A: reporte de clasificación del mejor modelo antes del ajuste de umbrales}
+
+La Tabla \ref{tab:reporte_mejor_modelo_a} presenta el desempeño por categoría del mejor resultado observado antes del ajuste de umbrales. El soporte corresponde a la cantidad de asignaciones positivas de cada categoría en el conjunto de prueba. Su suma es superior al número de comentarios de prueba debido a la naturaleza multietiqueta del problema.
+
+\begin{table}[htbp]
+\centering
+\caption{Reporte de clasificación del mejor resultado observado en la Línea A antes del ajuste de umbrales.}
+\label{tab:reporte_mejor_modelo_a}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Categoría} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
+\midrule
+Pago, monto y cálculo & 0.9545 & 0.8235 & 0.8842 & 51 \\
+Tiempos y oportunidad & 1.0000 & 0.7843 & 0.8791 & 51 \\
+Información y comunicación & 0.8966 & 0.5306 & 0.6667 & 49 \\
+Atención y gestión del servicio & 0.9000 & 0.7500 & 0.8182 & 48 \\
+Satisfacción o comentario general & 0.8372 & 0.8000 & 0.8182 & 45 \\
+\midrule
+Micro promedio & 0.9184 & 0.7377 & 0.8182 & 244 \\
+Macro promedio & 0.9177 & 0.7377 & 0.8133 & 244 \\
+Ponderado promedio & 0.9200 & 0.7377 & 0.8143 & 244 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\subsection{Etapa KNN 7: Ajuste de umbrales por categoría para los 10 modelos}
+
+La etapa base utilizó la decisión estándar de KNN para asignar cada categoría. Sin embargo, un único criterio de decisión no necesariamente es adecuado para todas las etiquetas, ya que cada categoría presenta distinta frecuencia, separabilidad y relación entre precisión y recall. Por ello, se realizó una calibración independiente por categoría para los diez modelos KNN evaluados.
+
+Para cada modelo se obtuvieron probabilidades de clase sobre el conjunto de validación y se evaluaron umbrales candidatos entre 0.05 y 0.95, con incrementos de 0.05. El umbral de cada categoría se seleccionó maximizando $F_2$, métrica que otorga mayor importancia al recall. En caso de empate se priorizaron, sucesivamente, recall, F1, precisión y cercanía al umbral estándar. Los umbrales seleccionados se mantuvieron fijos y se aplicaron una única vez al conjunto de prueba, el cual no participó en la calibración.
+
+Antes de esta etapa, la configuración TF-IDF con texto lematizado era el mejor modelo según F1 macro de prueba. Después de la calibración, la configuración TF-IDF con stemming fue seleccionada como la alternativa final más equilibrada para un criterio sensible al recall. La selección no implica que su F1 macro sea superior al mejor resultado base; refleja que la calibración permitió recuperar una mayor proporción de etiquetas positivas con una reducción controlada de precisión.
+
+\begin{table}[!htbp]
+\centering
+\caption{Comparación de resultados disponibles antes y después del ajuste de umbrales.}
+\label{tab:comparacion_umbrales_a}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}Y Y r r r@{}}
+\toprule
+\textbf{Modelo} & \textbf{Etapa} & \textbf{Prec. macro} & \textbf{Recall macro} & \textbf{F1 macro} \\
+\midrule
+TF-IDF + lematización & Mejor resultado base & 0.9177 & 0.7377 & 0.8133 \\
+TF-IDF + stemming & Antes de calibrar & 0.8713 & 0.7543 & 0.8051 \\
+TF-IDF + stemming & Umbrales por categoría & 0.7493 & 0.8600 & 0.7952 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\FloatBarrier
+
+En la misma configuración TF-IDF con stemming, el ajuste elevó el recall macro desde 0.7543 hasta 0.8600, una diferencia de 0.1057. A cambio, la precisión macro disminuyó desde 0.8713 hasta 0.7493 y el F1 macro pasó de 0.8051 a 0.7952. Este comportamiento representa el compromiso esperado al reducir los umbrales de decisión: se detectan más casos positivos, pero aumentan las asignaciones positivas incorrectas.
+
+\begin{table}[!htbp]
+\centering
+\caption{Reporte de clasificación del modelo calibrado seleccionado en la Línea A.}
+\label{tab:reporte_modelo_calibrado_a}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Categoría} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
+\midrule
+Pago, monto y cálculo & 0.7121 & 0.9216 & 0.8034 & 51 \\
+Tiempos y oportunidad & 0.9070 & 0.7647 & 0.8298 & 51 \\
+Información y comunicación & 0.7302 & 0.9388 & 0.8214 & 49 \\
+Atención y gestión del servicio & 0.6774 & 0.8750 & 0.7636 & 48 \\
+Satisfacción o comentario general & 0.7200 & 0.8000 & 0.7579 & 45 \\
+\midrule
+Micro promedio & 0.7394 & 0.8607 & 0.7955 & 244 \\
+Macro promedio & 0.7493 & 0.8600 & 0.7952 & 244 \\
+Ponderado promedio & 0.7511 & 0.8607 & 0.7963 & 244 \\
+Promedio por muestra & 0.8042 & 0.8707 & 0.8226 & 244 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+El modelo calibrado destaca por el recall alcanzado en todas las categorías, particularmente en \textit{Información y comunicación}, donde obtuvo 0.9388. Por tanto, TF-IDF con lematización se mantiene como el mejor modelo de la etapa base según F1 macro, mientras que TF-IDF con stemming se recomienda como configuración final cuando se privilegia una detección más amplia de etiquetas positivas y un equilibrio operativo entre precision y recall.
+
+\subsection{Línea B: comparación global de las 20 configuraciones}
+
+La Tabla \ref{tab:resultados_globales_b} presenta los resultados de las 10 combinaciones únicas (variante × método), mostrando F1 macro en modo supervisado (solo semilla) y en modo self-training, ordenadas de mayor a menor F1 macro en self-training.
+
+\begin{table}[htbp]
+\centering
+\caption{Resultados de las configuraciones de la Línea B, ordenadas por F1 macro en self-training.}
+\label{tab:resultados_globales_b}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{cllllrrrr}
+\toprule
+\textbf{Rank} & \textbf{Variante} & \textbf{Método} & \textbf{Clf} & \textbf{F1 macro (supervisado)} & \textbf{F1 macro (self-training)} & \textbf{Delta} \\
+\midrule
+1  & stemming          & TF-IDF & SVM & 0.709 & 0.666 & $-0.043$ \\
+2  & sin\_stopwords    & TF-IDF & SVM & 0.661 & 0.659 & $-0.002$ \\
+3  & lematizado        & TF-IDF & SVM & 0.682 & 0.615 & $-0.067$ \\
+4  & stemming          & W2V    & SVM & 0.672 & 0.585 & $-0.087$ \\
+5  & sin\_stopwords    & W2V    & SVM & 0.620 & 0.549 & $-0.071$ \\
+6  & lematizado        & W2V    & SVM & 0.624 & 0.545 & $-0.079$ \\
+7  & comentario\_limpio & TF-IDF & SVM & 0.603 & 0.517 & $-0.086$ \\
+8  & sin\_tildes       & TF-IDF & SVM & 0.623 & 0.514 & $-0.109$ \\
+9  & sin\_tildes       & W2V    & SVM & 0.582 & 0.513 & $-0.069$ \\
+10 & comentario\_limpio & W2V    & SVM & 0.599 & 0.509 & $-0.090$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
+\FloatBarrier
+
+El self-training produjo resultados inferiores al modo supervisado en las 10 combinaciones, con deltas que van desde $-0.002$ hasta $-0.109$ puntos de F1 macro.
+
+\subsection{Línea B: mejor resultado observado}
+
+El mejor resultado en self-training correspondió a la combinación \code{stemming|tfidf|svm}. La Tabla \ref{tab:mejor_modelo_b} resume sus métricas sobre el conjunto de prueba.
+
+\begin{table}[htbp]
+\centering
+\caption{Métricas del mejor resultado observado en la Línea B en modo self-training.}
+\label{tab:mejor_modelo_b}
+\small
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Configuración & stemming + TF-IDF + SVM \\
+Modo & Self-training (umbral 0.80) \\
+Accuracy & 0.966 \\
+F1 macro & 0.666 \\
+F1 ponderado & 0.960 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+La exactitud de 0.966 parece alta, pero refleja el dominio de la clase \code{atencion} (87\% del pool). El F1 macro de 0.666 es la métrica más representativa del desempeño real sobre las cinco categorías.
+
+\subsection{Línea B: modelo supervisado de referencia y reporte de clasificación}
+
+Al igual que la Línea A realizó una etapa de calibración de umbrales sobre su mejor modelo base, la Línea B incluye una etapa de referencia supervisada: se entrena el mismo pipeline (stemming + TF-IDF + SVM) con \emph{todas} las etiquetas del conjunto de entrenamiento disponibles, eliminando la restricción del 10\% de semilla. El objetivo no es mejorar el self-training, sino establecer qué tan lejos está el escenario semi-supervisado del techo alcanzable con supervisión completa.
+
+La búsqueda de hiperparámetros seleccionó $C=10$ con F1 macro de 0.948 en validación cruzada. Sobre el conjunto de prueba, el modelo alcanzó F1 macro de 0.959, frente al 0.666 del mejor resultado en self-training. La diferencia de 0.293 puntos cuantifica el costo de disponer de etiquetas para solo el 10\% del conjunto de entrenamiento en un corpus con desbalance marcado. El reporte completo por categoría se presenta en la Tabla \ref{tab:reporte_linea_b}.
+
+\begin{table}[htbp]
+\centering
+\caption{Reporte de clasificación del modelo final de la Línea B (stemming + TF-IDF + SVM, $C=10$).}
+\label{tab:reporte_linea_b}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Categoría} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
+\midrule
+agendamiento     & 1.000 & 0.800 & 0.889 & 20 \\
+atencion         & 0.995 & 0.999 & 0.997 & 3.845 \\
+espera           & 0.994 & 0.989 & 0.992 & 356 \\
+infraestructura  & 0.987 & 0.904 & 0.943 & 83 \\
+pago             & 0.989 & 0.958 & 0.974 & 96 \\
+\midrule
+Macro promedio     & 0.993 & 0.930 & 0.959 & 4.400 \\
+Ponderado promedio & 0.995 & 0.995 & 0.995 & 4.400 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\subsection{Síntesis comparativa entre las líneas de trabajo}
+
+Las conclusiones comparativas entre ambos conjuntos de datos deben elaborarse únicamente a partir de los resultados, configuraciones y métricas efectivamente obtenidos en cada línea. En particular, no se deben comparar directamente valores de F1, accuracy o tiempos si las taxonomías, tamaños muestrales, particiones o protocolos de evaluación son distintos sin explicitar estas diferencias.
+
+
+% ============================================================
+\section{Análisis crítico de resultados}
+% ============================================================
+
+\subsection{Línea A: comparación entre TF-IDF con n-gramas y Word2Vec}
+
+La principal tendencia observada en la Línea A es que TF-IDF con n-gramas superó a Word2Vec en todos los experimentos evaluados según F1 macro. El mejor modelo TF-IDF alcanzó F1 macro de 0.8133, mientras que el mejor modelo Word2Vec obtuvo 0.7825. Esta diferencia sugiere que, en este corpus, las palabras y expresiones concretas fueron más informativas que las representaciones densas promedio construidas a partir de embeddings de palabras.
+
+Este comportamiento es coherente con comentarios breves vinculados a temas específicos. Expresiones como ``monto incorrecto'', ``sin respuesta'', ``no informaron'' o ``demora en el pago'' pueden ser capturadas directamente por unigramas y bigramas. En Word2Vec, el promedio de embeddings reduce todo el comentario a un único vector denso, lo que puede diluir términos altamente discriminativos y eliminar información sobre el orden de las palabras o sobre combinaciones locales.
+
+No obstante, este resultado no permite afirmar que TF-IDF sea universalmente superior a Word2Vec. La conclusión se restringe al conjunto de datos de la Línea A, al tamaño de su muestra, a la taxonomía, a la partición, al preprocesamiento y al clasificador utilizados.
+
+\subsection{Línea A: efecto del preprocesamiento}
+
+Dentro de TF-IDF, la lematización alcanzó el mejor F1 macro en prueba, con 0.8133. Este resultado sugiere que agrupar variantes flexivas bajo una forma base puede favorecer la consistencia de la representación. Por ejemplo, expresiones relacionadas con ``informar'', ``informaron'' e ``informado'' pueden concentrar evidencia en términos más estables.
+
+El stemming fue la segunda mejor configuración TF-IDF, con F1 macro de 0.8051 y la mayor exactitud exacta entre los modelos TF-IDF, igual a 0.7354. La diferencia entre lematización y stemming es acotada, por lo que no se observa una superioridad absoluta de una técnica sobre la otra. En cambio, se observa que ambos mecanismos de reducción morfológica tuvieron un desempeño superior a las variantes limpia, sin tildes y sin stopwords bajo TF-IDF.
+
+Para Word2Vec, la mejor variante fue stemming, con F1 macro de 0.7825. Esto indica que la reducción de variabilidad morfológica también fue favorable para la representación densa, aunque no logró superar a las configuraciones TF-IDF equivalentes.
+
+\subsection{Línea A: interpretación por categoría}
+
+Las categorías \textit{Pago, monto y cálculo} y \textit{Tiempos y oportunidad} alcanzaron los mayores F1-score en el mejor modelo, con 0.8842 y 0.8791, respectivamente. Esto sugiere que estos temas poseen vocabulario relativamente específico y consistente dentro del corpus.
+
+La categoría \textit{Información y comunicación} presentó el menor F1-score, igual a 0.6667. Su precisión fue alta, con 0.8966, pero su recall fue menor, con 0.5306. En términos prácticos, el modelo fue conservador: cuando asignó esta categoría, generalmente acertó, pero dejó sin detectar una proporción relevante de comentarios que sí pertenecían a ella.
+
+Una explicación plausible es que la categoría de información y comunicación comparta vocabulario con atención, tiempos de respuesta o satisfacción general. Comentarios como ``no me dieron respuesta'', por ejemplo, pueden aludir simultáneamente a falta de información, atención deficiente y demora. Esta superposición temática dificulta la separación de etiquetas y es consistente con la naturaleza multietiqueta del problema.
+
+\subsection{Línea A: efecto del ajuste de umbrales}
+
+La calibración por categoría modificó el criterio de selección de la configuración final. El modelo base con texto lematizado mantuvo el mayor F1 macro antes del ajuste, mientras que TF-IDF con stemming fue seleccionado después de calibrar por su recall macro de 0.8600. Respecto de esa misma configuración antes de la calibración, el recall macro aumentó en 0.1057 y el F1 macro disminuyó solo en 0.0099. Esta diferencia evidencia que el ajuste de umbrales no mejora simultáneamente todas las métricas: desplaza el equilibrio hacia una mayor detección de etiquetas positivas.
+
+El resultado es especialmente relevante para categorías con riesgo de falsos negativos. En el modelo calibrado, \textit{Información y comunicación} alcanzó recall de 0.9388, aunque su precisión fue de 0.7302. Por ello, la configuración calibrada se recomienda cuando resulta más importante recuperar comentarios pertinentes que conservar el nivel máximo de precisión obtenido por el modelo base.
+
+\subsection{Línea A: efecto de los hiperparámetros y tiempos}
+
+Las configuraciones seleccionadas utilizaron principalmente distancia coseno y búsqueda \code{brute}. La distancia coseno es apropiada para representaciones textuales porque compara la orientación relativa entre vectores, reduciendo el efecto de la longitud absoluta del comentario.
+
+El mejor resultado observado utilizó, en cambio, distancia Minkowski con $p=2$ y ponderación por distancia. En esta configuración, los vecinos más cercanos influyen más en la decisión que los vecinos lejanos. Sin embargo, no existe una correlación fija entre una métrica de distancia o un valor de $k$ y un mejor desempeño. El efecto de los hiperparámetros depende de la representación, del preprocesamiento y de la distribución de las categorías.
+
+Los tiempos de ajuste fueron muy bajos, del orden de milisegundos. Este comportamiento es esperable en KNN, ya que el algoritmo no ajusta parámetros complejos durante \code{fit}; principalmente almacena las instancias de referencia. Los tiempos de predicción sobre el conjunto de prueba se ubicaron aproximadamente entre 0.0812 y 0.1003 segundos para 223 comentarios. Por lo tanto, en una eventual aplicación a mayor escala, el tiempo de predicción y la memoria requerida por los vectores de entrenamiento son aspectos más relevantes que el tiempo de ajuste.
+
+\subsection{Línea B: comparación entre TF-IDF con n-gramas y Word2Vec}
+
+TF-IDF superó a Word2Vec en cuatro de las cinco variantes de texto. En modo self-training, el mejor resultado TF-IDF fue 0.666 (stemming) frente a 0.585 del mejor Word2Vec (también stemming), una diferencia de 0.081 puntos.
+
+Este comportamiento es consistente con la Línea A: las características léxicas de TF-IDF capturan términos y expresiones específicas del corpus hospitalario con mayor efectividad que el promedio de embeddings de Word2Vec. Sin embargo, la conclusión aplica exclusivamente a este corpus, esta taxonomía y estas configuraciones.
+
+\subsection{Línea B: efecto del preprocesamiento}
+
+Dentro de TF-IDF con SVM, el stemming fue la variante con mayor F1 macro tanto en modo supervisado (0.709) como en self-training (0.666). La lematización fue la segunda mejor variante (supervisado: 0.682, self-training: 0.615), y sin stopwords ocupó el tercer lugar (supervisado: 0.661, self-training: 0.659). Las variantes \code{comentario\_limpio} y \code{sin\_tildes} mostraron consistentemente el menor desempeño.
+
+Para Word2Vec con SVM, el stemming también fue la mejor variante (supervisado: 0.672, self-training: 0.585). La reducción morfológica parece favorecer ambas representaciones, posiblemente porque normaliza variantes flexivas del mismo término, concentrando la evidencia en formas más estables.
+
+\subsection{Línea B: interpretación por categoría}
+
+Las categorías \textit{atencion} y \textit{espera} alcanzaron los mayores F1-score en el modelo final, con 0.997 y 0.992, respectivamente. Ambas poseen vocabulario específico y suficientes ejemplos de entrenamiento para que el modelo las discrimine bien.
+
+La categoría \textit{agendamiento} presentó el menor F1-score, con 0.889, a pesar de obtener precisión perfecta (1.000). Su recall de 0.800 indica que el modelo dejó sin detectar el 20\% de los casos de prueba. Esto es esperable dado que \textit{agendamiento} cuenta con solo 102 comentarios en todo el pool (20 en prueba), lo que limita la cantidad de señal disponible durante el entrenamiento.
+
+\subsection{Línea B: efecto del self-training y los hiperparámetros}
+
+La Línea A incluyó una etapa de calibración de umbrales como segundo ajuste: sobre el mismo modelo base, modificó los criterios de decisión sin agregar etiquetas nuevas, logrando subir el recall macro en 0.1057 con una caída de F1 macro de solo 0.0099. El self-training de la Línea B cumple un rol análogo en la estructura del pipeline, pero con un comportamiento opuesto: en lugar de refinar un modelo ya robusto, intenta aprender de datos sin etiquetar, y en ninguna de las 10 combinaciones logró superar al supervisado. La diferencia no es solo de resultados, sino de premisa: la calibración de Línea A parte de un modelo con acceso a todas las etiquetas de entrenamiento; el self-training de Línea B parte de solo el 10\%.
+
+Dentro de ese marco, el menor impacto negativo del self-training se observó en \code{sin\_stopwords|tfidf|svm} (delta $-0.002$), lo que sugiere que eliminar stopwords reduce la variabilidad del vocabulario y facilita que el modelo propague etiquetas con mayor consistencia. El mayor impacto negativo correspondió a \code{sin\_tildes|tfidf|svm} (delta $-0.109$): esta variante introduce colisiones léxicas al eliminar las tildes sin reducir vocabulario, lo que genera señales ambiguas durante las iteraciones de self-training y acumula errores de etiquetado progresivos.
+
+Respecto a los hiperparámetros, la búsqueda seleccionó $C=10$ para SVM, el valor más alto del espacio evaluado. Esto indica que en este corpus, con 17.598 ejemplos de entrenamiento y cinco categorías muy desbalanceadas, el modelo se beneficia de penalizar poco el margen y concentrarse en clasificar correctamente los ejemplos de entrenamiento disponibles.
+
+\subsection{Análisis integrado del proyecto}
+
+La integración de ambas líneas permite examinar cómo los métodos de procesamiento y clasificación se comportan en dominios distintos. Esta comparación debe considerar las diferencias en tamaño de los corpus, naturaleza de los comentarios, definición de categorías, proporción de etiquetas y representación seleccionada. Por ello, la interpretación integrada no debe reducirse a identificar un único modelo ``ganador'' para ambos dominios, sino a reconocer las condiciones bajo las cuales cada configuración resultó más adecuada.
+
+
+\subsection{Limitaciones del proyecto}
+
+Las principales limitaciones identificadas en la Línea A son las siguientes:
+
+\begin{itemize}[leftmargin=*]
+    \item La muestra etiquetada contiene 1.500 comentarios, por lo que las métricas pueden variar al incorporar nuevas observaciones o nuevas particiones de datos.
+    \item Los resultados se obtuvieron con una única división train--validation--test. Una validación cruzada repetida o un esquema de validación anidada permitiría evaluar con mayor precisión la estabilidad de las configuraciones.
+    \item No se midió acuerdo entre etiquetadores, por lo que no se dispone de un indicador formal de consistencia de las etiquetas manuales.
+    \item Word2Vec fue entrenado sobre el corpus disponible en el experimento y no se utilizaron embeddings preentrenados externos.
+    \item El promedio de vectores Word2Vec no conserva explícitamente el orden de las palabras ni la estructura sintáctica de los comentarios.
+    \item La ambigüedad, brevedad y posible superposición semántica entre categorías pueden incrementar falsos negativos y falsos positivos.
+\end{itemize}
+
+Las limitaciones específicas de la Línea B son las siguientes:
+
+\begin{itemize}[leftmargin=*]
+    \item Las etiquetas provienen de columnas binarias predefinidas en el dataset, sin etiquetado manual ni verificación de consistencia entre anotadores.
+    \item El pool multiclase presenta un desbalance marcado: \code{atencion} concentra el 87\% de los casos, lo que afecta el F1 macro en el escenario semi-supervisado y puede sesgar la propagación de etiquetas en self-training.
+    \item Se excluyeron los comentarios con cero tópicos o más de un tópico activo (18.002 de los 40.000 de la muestra), reduciendo el tamaño efectivo del experimento.
+    \item Word2Vec fue entrenado sobre la muestra disponible y no se utilizaron embeddings preentrenados externos.
+    \item El umbral de self-training (0.80) es fijo; un umbral adaptativo podría mejorar la propagación de etiquetas en clases minoritarias.
+\end{itemize}
+
+% ============================================================
+\section{Conclusiones y trabajo futuro}
+% ============================================================
+
+El proyecto integró dos desarrollos paralelos para el análisis de comentarios abiertos. En ambas líneas se contemplan etapas de estructuración de datos, limpieza y normalización textual, generación de representaciones, entrenamiento de modelos, ajuste de hiperparámetros, evaluación y análisis de resultados. Esta organización permite abordar las particularidades de cada dominio sin perder una estructura metodológica común.
+
+En la Línea A, el principal hallazgo fue que TF-IDF con n-gramas obtuvo mejor desempeño que Word2Vec en los diez experimentos comparados. Antes del ajuste de umbrales, el mejor resultado observado en prueba correspondió a TF-IDF sobre texto lematizado, con cinco vecinos, ponderación por distancia y métrica Minkowski con $p=2$. Esta configuración alcanzó F1 macro de 0.8133, precisión macro de 0.9177 y Hamming loss de 0.0717.
+
+La etapa KNN 7 mostró que la selección final depende del criterio operativo adoptado. Al calibrar umbrales por categoría con énfasis en recall, TF-IDF con stemming alcanzó recall macro de 0.8600, precisión macro de 0.7493 y F1 macro de 0.7952. En consecuencia, TF-IDF con lematización se mantiene como el mejor modelo base por F1 macro, mientras que TF-IDF con stemming se recomienda como configuración final calibrada cuando se prioriza recuperar una mayor cantidad de comentarios pertinentes.
+
+Los resultados de la Línea A muestran que el preprocesamiento modifica el desempeño del modelo. La lematización y el stemming fueron las variantes más competitivas, mientras que la remoción de tildes mostró un efecto reducido. Además, la categoría de información y comunicación concentró la principal oportunidad de mejora antes de calibrar los umbrales.
+
+En la Línea B, el esquema semi-supervisado mostró que TF-IDF con stemming y SVM es la combinación más robusta en el corpus hospitalario. El self-training no mejoró respecto al supervisado en la mayoría de los casos, y la diferencia se amplió en clases con pocos representantes, lo que sugiere que el umbral de confianza y el desbalance de clases son factores críticos en este escenario. El modelo final con ajuste de hiperparámetros ($C=10$) alcanzó F1 macro de 0.959 y exactitud de 0.995 en prueba, evidenciando una alta capacidad discriminativa cuando se dispone de etiquetas suficientes para las cinco categorías.
+
+Como extensiones futuras del proyecto completo, se propone ampliar las muestras etiquetadas, incorporar revisión o acuerdo entre etiquetadores, aplicar validación cruzada repetida, refinar la calibración de umbrales con curvas precision--recall, evaluar selección de características y contrastar los resultados con clasificadores adicionales cuando corresponda. También sería pertinente explorar embeddings contextualizados y evaluar la estabilidad de las configuraciones con nuevos datos de cada dominio. Una vez que los clasificadores base de cada línea hayan sido validados con los criterios definidos, podrían incorporarse estrategias de aprendizaje semi-supervisado con mecanismos explícitos de control de confianza \cite{sklearnsemi,sklearnselftraining}.
+
+% ============================================================
+\section{Reproducibilidad}
+% ============================================================
+
+El repositorio del proyecto debe almacenar los notebooks, las bases de etiquetado, los reportes de clasificación, las tablas de resultados y el código fuente de este informe. La trazabilidad de cada línea de trabajo se mantiene mediante la documentación de las configuraciones, variables, semillas aleatorias, particiones y métricas reportadas. 
+% ============================================================
+\begin{thebibliography}{9}
+% ============================================================
+
+\bibitem{kowsari2019}
+Kowsari, K., Jafari Meimandi, K., Heidarysafa, M., Mendu, S., Barnes, L., \& Brown, D. (2019).
+\newblock Text classification algorithms: A survey.
+\newblock \textit{Information, 10}(4), 150.
+\newblock \url{https://doi.org/10.3390/info10040150}
+
+\bibitem{sklearn}
+Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos, A., Cournapeau, D., Brucher, M., Perrot, M., \& Duchesnay, E. (2011).
+\newblock Scikit-learn: Machine learning in Python.
+\newblock \textit{Journal of Machine Learning Research, 12}, 2825--2830.
+
+\bibitem{sklearnsemi}
+scikit-learn developers. (s.f.).
+\newblock \textit{Semi-supervised learning.}
+\newblock \url{https://scikit-learn.org/stable/modules/semi_supervised.html}
+
+\bibitem{sklearnselftraining}
+scikit-learn developers. (s.f.).
+\newblock \textit{SelfTrainingClassifier.}
+\newblock \url{https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.SelfTrainingClassifier.html}
+
+\end{thebibliography}
+
+\end{document}
